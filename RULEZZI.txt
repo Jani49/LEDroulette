@@ -1,0 +1,107 @@
+/****************************************/
+/* 6.4.2005, Lopputyö: LED-Ruletti v1.0 */
+/* S02STB1,  Jani Heino                 */
+/****************************************/
+
+/* Ladataan standardit ja asetukset. */
+
+#include <8051reg.h>
+#include <8051bit.h>
+#include <8051int.h>
+#include <8051io.h>
+
+/* Alustetaan globaalit muuttujat. */
+
+unsigned int i, piiri, ledi, vaihto, pyoritys, pyorii, hypyt, kesto;
+
+/* Alustetaan piirilevyn ledit. */
+
+init() {
+  setbit(P1.0); setbit(P1.1); setbit(P1.2); setbit(P1.3);
+  setbit(P1.4); setbit(P1.5); setbit(P1.6); setbit(P1.7); delay(50);
+  clrbit(P3.0); clrbit(P3.1); clrbit(P3.3); clrbit(P3.4); clrbit(P3.7);
+  delay(50);
+}
+
+/* Aloitus aliohjelma, jota kutsutaan napin painalluksella. */
+
+alotus() {
+  piiri = 1;
+
+/* Luodaan 2 silmukkaa, joilla toteutetaan nopeasti ja hitaasti pyöritys. */
+
+  for(pyoritys=1; pyoritys<3; pyoritys++) {
+    if      (pyoritys == 1) { kesto = rand(40,60); }
+    else if (pyoritys == 2) { kesto = rand(7,15); }
+  
+/* Tässä silmukassa pyöritetään piirejä, jotka ohjaavat LEDejä. */
+
+    for(pyorii=1; pyorii<kesto; pyorii++) {
+      ledi = 1;
+
+  /* nollataan kaikki piirit ja ledit häiriön estämiseksi. */
+
+      setbit(P1.0); setbit(P1.1); setbit(P1.2); setbit(P1.3);
+      setbit(P1.4); setbit(P1.5); setbit(P1.6); setbit(P1.7); delay(20);
+      clrbit(P3.0); clrbit(P3.1); clrbit(P3.3); clrbit(P3.4); clrbit(P3.7);
+
+  /* piirien pyöritys oikeassa järjestyksessä. */
+
+      if      (piiri == 1) { setbit(P3.0); vaihto = 9; piiri++; }
+      else if (piiri == 2) { setbit(P3.1); vaihto = 9; piiri++; }
+      else if (piiri == 3) { setbit(P3.7); vaihto = 9; piiri++; }
+      else if (piiri == 4) { setbit(P3.4); vaihto = 9; piiri++; }
+      else if (piiri == 5) { setbit(P3.3); vaihto = 6; piiri = 1; }
+      delay(20);
+
+/* Tässä silmukassa käydään ledit läpi piiristä riippuen,  */
+/* Koska viimeisessä piirissä on vähemmän ledejä käytössä. */
+
+      for(i=1; i<vaihto; i++) { 
+
+  /* ledi -muuttujasta otetaan komplementti, ja se syötetään porttiin 1. */
+  /* Sen jälkeen "aukkoa" siirretään portissa 1. Viive määräytyy sen     */
+  /* mukaan, mikä pyöritys modi on käytössä.                             */
+
+        P1 = ~ledi; ledi <<= 1; 
+        if      (pyoritys == 1) { delay(20); }
+        else if (pyoritys == 2) { delay(60); }
+      }
+    }
+  }
+
+/* Häiriön poistamisen vuoksi nollataan taas LEDit ja piirit. */
+
+  ledi = 1;
+  setbit(P1.0); setbit(P1.1); setbit(P1.2); setbit(P1.3);
+  setbit(P1.4); setbit(P1.5); setbit(P1.6); setbit(P1.7); delay(20);
+  clrbit(P3.0); clrbit(P3.1); clrbit(P3.3); clrbit(P3.4); clrbit(P3.7);
+
+/* Lopuksi katsotaan vielä mihin piiriin jäätin,           */
+/* ja suoritetaan "loppuhypähdykset" kyseisessä piirissä. */
+
+  if      (piiri == 1) { setbit(P3.0); hypyt = rand(2,9); }
+  else if (piiri == 2) { setbit(P3.1); hypyt = rand(2,9); }
+  else if (piiri == 3) { setbit(P3.7); hypyt = rand(2,9); }
+  else if (piiri == 4) { setbit(P3.4); hypyt = rand(2,9); }
+  else                 { setbit(P3.3); hypyt = rand(2,6); }
+  delay(20);
+
+/* Loppuhypähdysten määrä on satunnainen. */
+
+  for(i=1; i<hypyt; i++) {
+    P1 = ~ledi; ledi <<= 1; delay(130); 
+  } 
+}
+
+/* Pää-aliohjelma, jossa kutsutaan alustus-aliohjelmaa init() */
+/* ja luodaan odotus-silmukka.                                */
+
+main() {
+  init();
+
+/* Odotus-silmukassa odotetaan painonapin painallusta. */
+  while(1) {
+    if (~P3 & 0x04) { alotus(); }
+  } 
+}
